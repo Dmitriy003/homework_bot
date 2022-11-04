@@ -93,7 +93,6 @@ def check_tokens() -> bool:
 
 def main():
     """Основная логика работы бота."""
-
     logger = logging.getLogger(__name__)
     logging.basicConfig(
         level=logging.INFO,
