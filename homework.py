@@ -24,8 +24,10 @@ HOMEWORK_STATUSES = {
 
 
 def send_message(bot: Bot, message: str) -> None:
-    """Отправляет сообщение в Telegram чат,
-     определяемый переменной окружения TELEGRAM_CHAT_ID."""
+    """
+    Отправляет сообщение в Telegram чат,
+    определяемый переменной окружения TELEGRAM_CHAT_ID.
+    """
     try:
         bot.send_message(TELEGRAM_CHAT_ID, message)
     except Exception as tgerror:
@@ -64,8 +66,10 @@ def check_response(response: dict) -> list:
 
 
 def parse_status(homework: dict) -> str:
-    """Извлекает из информации о конкретной домашней работе
-     статус этой работы."""
+    """
+    Извлекает из информации о конкретной домашней работе
+    статус этой работы.
+    """
     homework_name = homework.get('homework_name')
     homework_status = homework.get('status')
 
@@ -77,8 +81,10 @@ def parse_status(homework: dict) -> str:
 
 
 def check_tokens() -> bool:
-    """Проверяет доступность переменных окружения,
-     которые необходимы для работы программы."""
+    """
+    Проверяет доступность переменных окружения,
+    которые необходимы для работы программы.
+    """
     return bool(PRACTICUM_TOKEN and TELEGRAM_TOKEN and TELEGRAM_CHAT_ID)
 
 
