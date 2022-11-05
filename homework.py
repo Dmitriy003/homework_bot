@@ -1,10 +1,12 @@
 import os
+import sys
 import time
 import logging
 
 from dotenv import load_dotenv
 import requests
 from telegram import Bot, TelegramError
+from http import HTTPStatus
 
 load_dotenv()
 
@@ -44,26 +46,25 @@ def get_api_answer(current_timestamp: time) -> dict:
         response = requests.get(ENDPOINT, headers=HEADERS, params=params)
     except Exception as error:
         raise requests.ConnectionError(
-            f'Ошибка при получении данных: {error}') from error
+            f'Ошибка при получении данных: {error}'
+        ) from error
     status = response.status_code
-    if status == 200:
-        return response.json()
-    else:
+    if not status == HTTPStatus.OK:
         raise requests.HTTPError(f'возврат статуса ответа {status}')
+    return response.json()
 
 
 def check_response(response: dict) -> list:
     """Проверяет ответ API на корректность."""
-    if isinstance(response, dict) and len(response) > 0:
-        try:
-            homeworks = response['homeworks']
-            if isinstance(homeworks, list):
-                return homeworks
-            raise TypeError('под ключом homeworks в response - не список')
-        except Exception:
-            raise KeyError('отсутствие ключа homeworks в response')
-    else:
+    if not (isinstance(response, dict) and len(response) > 0):
         raise TypeError('response - не словарь.. ну или пустой словарь :)')
+    homeworks = response.get('homeworks')
+    if not homeworks:
+        raise KeyError('отсутствие ключа homeworks в response')
+    if isinstance(homeworks, list):
+        return homeworks
+    else:
+        raise TypeError('под ключом homeworks в response - не список')
 
 
 def parse_status(homework: dict) -> str:
@@ -88,7 +89,7 @@ def check_tokens() -> bool:
 
     которые необходимы для работы программы.
     """
-    return bool(PRACTICUM_TOKEN and TELEGRAM_TOKEN and TELEGRAM_CHAT_ID)
+    return all((PRACTICUM_TOKEN, TELEGRAM_TOKEN, TELEGRAM_CHAT_ID))
 
 
 def main():
@@ -102,37 +103,33 @@ def main():
     )
 
     if not check_tokens():
-        raise Exception("Couldn't import tokens")
         logger.critical('отсутствие обязательных переменных окружения')
+        sys.exit()
 
     bot = Bot(token=TELEGRAM_TOKEN)
     current_timestamp = int(time.time())
 
-    current_status = ''
-
     while True:
         try:
             response = get_api_answer(current_timestamp)
-            homework = check_response(response)
-            if homework:
-                status = parse_status(homework[0])
-                if current_status != status:
-                    send_message(bot, status)
-                    current_status = status
-
-            time.sleep(RETRY_TIME)
-            current_timestamp = int(time.time())
+            homeworks = check_response(response)
+            if homeworks:
+                status = parse_status(homeworks[0])
+                send_message(bot, status)
 
         except TelegramError as error:
             logger.error(f'Где-то в API telegram беда.. {error}')
 
         except Exception as error:
             message = f'Сбой в работе программы: {error}'
-            logger.error(message)
+            logger.exception(message)
             send_message(bot, message)
             time.sleep(RETRY_TIME)
         else:
             logger.info('всё идёт по плану')
+        finally:
+            time.sleep(RETRY_TIME)
+            current_timestamp = int(time.time())
 
 
 if __name__ == '__main__':
